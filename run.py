@@ -1,5 +1,9 @@
 from src.main import ikaris_app
 from src.utils.voice import get_voice_input
+from transformers import logging
+
+# Silencing Transformers logs
+logging.set_verbosity_error()
 
 from src.utils.helpers import get_system_health
 
