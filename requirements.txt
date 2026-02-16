@@ -1,0 +1,91 @@
+aiohappyeyeballs @ file:///home/conda/feedstock_root/build_artifacts/aiohappyeyeballs_1741775197943/work
+aiohttp @ file:///home/conda/feedstock_root/build_artifacts/aiohttp_1767524532482/work
+aiosignal @ file:///home/conda/feedstock_root/build_artifacts/aiosignal_1751626463503/work
+annotated-types @ file:///home/conda/feedstock_root/build_artifacts/annotated-types_1733247046149/work
+anyio @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_anyio_1767719033/work
+async-timeout @ file:///home/conda/feedstock_root/build_artifacts/async-timeout_1691763562544/work
+attrs @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_attrs_1764875182/work
+backports.zstd @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_backports.zstd_1767044984/work
+Brotli @ file:///home/conda/feedstock_root/build_artifacts/brotli-split_1764016952863/work
+certifi @ file:///home/conda/feedstock_root/build_artifacts/certifi_1767500808759/work/certifi
+cffi @ file:///home/conda/feedstock_root/build_artifacts/cffi_1761202849623/work
+charset-normalizer @ file:///home/conda/feedstock_root/build_artifacts/charset-normalizer_1760437218288/work
+cuda-bindings==13.0.3
+cuda-pathfinder==1.2.2
+distro==1.9.0
+exceptiongroup @ file:///home/conda/feedstock_root/build_artifacts/exceptiongroup_1763918002538/work
+filelock==3.20.0
+frozenlist @ file:///home/conda/feedstock_root/build_artifacts/frozenlist_1752167142843/work
+fsspec==2025.12.0
+greenlet @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_greenlet_1770077499/work
+h11 @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_h11_1767729720/work
+h2 @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_h2_1756364871/work
+hpack @ file:///home/conda/feedstock_root/build_artifacts/hpack_1737618293087/work
+httpcore @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_httpcore_1745602916/work
+httpx @ file:///home/conda/feedstock_root/build_artifacts/httpx_1733663348460/work
+hyperframe @ file:///home/conda/feedstock_root/build_artifacts/hyperframe_1737618333194/work
+idna @ file:///home/conda/feedstock_root/build_artifacts/idna_1760286409563/work
+Jinja2==3.1.6
+jiter==0.13.0
+jsonpatch @ file:///home/conda/feedstock_root/build_artifacts/jsonpatch_1733814567314/work
+jsonpointer @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_jsonpointer_1765026384/work
+langchain @ file:///home/conda/feedstock_root/build_artifacts/langchain_1770757664599/work
+langchain-core @ file:///home/conda/feedstock_root/build_artifacts/langchain-core_1771148200820/work
+langchain-openai==1.1.9
+langchain-text-splitters @ file:///home/conda/feedstock_root/build_artifacts/langchain-text-splitters_1756689305564/work
+langgraph @ file:///home/conda/feedstock_root/build_artifacts/langgraph_1770392910388/work
+langgraph-checkpoint @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_langgraph-checkpoint_1768277184/work
+langgraph-prebuilt @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_langgraph-prebuilt_1769115733/work
+langgraph-sdk @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_langgraph-sdk_1771102377/work
+langsmith @ file:///home/conda/feedstock_root/build_artifacts/langsmith_1771050557323/work
+MarkupSafe==2.1.5
+mpmath==1.3.0
+multidict @ file:///home/conda/feedstock_root/build_artifacts/multidict_1765460307651/work
+networkx==3.6.1
+numpy @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_numpy_1770098496/work/dist/numpy-2.4.2-cp311-cp311-linux_x86_64.whl#sha256=cfbdcca39199740e62dd9435af143f550913198d984087964c79342fd1ca2063
+nvidia-cublas==13.1.0.3
+nvidia-cuda-cupti==13.0.85
+nvidia-cuda-nvrtc==13.0.88
+nvidia-cuda-runtime==13.0.96
+nvidia-cudnn-cu13==9.15.1.9
+nvidia-cufft==12.0.0.61
+nvidia-cufile==1.15.1.6
+nvidia-curand==10.4.0.35
+nvidia-cusolver==12.0.4.66
+nvidia-cusparse==12.6.3.3
+nvidia-cusparselt-cu13==0.8.0
+nvidia-nccl-cu13==2.28.9
+nvidia-nvjitlink==13.0.88
+nvidia-nvshmem-cu13==3.4.5
+nvidia-nvtx==13.0.85
+openai==2.21.0
+orjson @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_orjson_1765811454/work
+ormsgpack @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_ormsgpack_1769125445/work
+packaging @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_packaging_1769093650/work
+pillow==12.0.0
+propcache @ file:///home/conda/feedstock_root/build_artifacts/propcache_1744524942571/work
+pycparser @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pycparser_1733195786/work
+pydantic @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pydantic_1764434463/work
+pydantic_core @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pydantic-core_1762988992/work
+PySocks @ file:///home/conda/feedstock_root/build_artifacts/pysocks_1733217236728/work
+PyYAML @ file:///home/conda/feedstock_root/build_artifacts/pyyaml_1770223234623/work
+regex==2026.1.15
+requests @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_requests_1766926974/work
+requests-toolbelt @ file:///home/conda/feedstock_root/build_artifacts/requests-toolbelt_1733734787568/work
+sniffio @ file:///home/conda/feedstock_root/build_artifacts/sniffio_1762941432086/work
+SQLAlchemy @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_sqlalchemy_1769087061/work
+sympy==1.14.0
+tenacity @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_tenacity_1770510172/work
+tiktoken==0.12.0
+torch==2.10.0+cu130
+torchaudio==2.10.0+cu130
+torchvision==0.25.0+cu130
+tqdm==4.67.3
+triton==3.6.0
+typing-inspection @ file:///home/conda/feedstock_root/build_artifacts/typing-inspection_1764158251755/work
+typing_extensions @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_typing_extensions_1756220668/work
+urllib3 @ file:///home/conda/feedstock_root/build_artifacts/urllib3_1767817748113/work
+uuid_utils @ file:///home/conda/feedstock_root/build_artifacts/uuid-utils_1770588566896/work/target/wheels/uuid_utils-0.14.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl#sha256=519be19872a423a2379d3d0dbafe80732fc2b09c7a44d2a627a79684e2e80512
+xxhash @ file:///home/conda/feedstock_root/build_artifacts/python-xxhash_1762516169530/work
+yarl @ file:///home/conda/feedstock_root/build_artifacts/yarl_1761336841882/work
+zstandard==0.25.0

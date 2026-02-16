@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Project Specific
+data/logs/*.log
+ikaris_memory.db
+checkpoints.sqlite
+faiss_ikaris_index/
+papers/
+dumpcontext.txt
