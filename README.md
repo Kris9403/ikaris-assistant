@@ -1,10 +1,10 @@
-# Ikaris Assistant 🦾 (v1.0.0)
+# Ikaris Assistant 🦾 (v1.1.0)
 
 A hyper-personalized local AI assistant running on Linux (ROG Strix), powered by LangChain and LangGraph.
 
 > [!IMPORTANT]
-> **Release Version**: v1.0.0
-> This version is finalized on the `master` branch.
+> **Release Version**: v1.1.0
+> This version includes critical stability fixes for Wayland and offline model caching.
 
 ## 🚀 Key Features
 
@@ -15,6 +15,7 @@ A hyper-personalized local AI assistant running on Linux (ROG Strix), powered by
 - **Persistent Memory**: Remembers your conversations across restarts using a local SQLite database.
 - **Logseq Sync**: Automatically logs insights to your Logseq journal and retrieves handwritten notes to answer questions.
 - **Local Voice Input**: Speak to Ikaris using **Faster-Whisper** locally on your GPU.
+- **Offline First**: Optimized for offline usage with aggressive model caching.
 
 ## 🛠 Project Structure
 
@@ -24,17 +25,15 @@ ikaris_assistant/
 ├── .gitignore          # Environment and cache ignores
 ├── environment.yml     # Conda environment definition
 ├── README.md           # Project documentation
-├── run.py              # Main entry point
+├── run.py              # Main entry point (GUI)
 ├── papers/             # Drop your research PDFs here
 │
-├── src/
-│   ├── main.py         # Graph compilation and routing logic
-│   ├── state.py        # LangGraph State definitions
-│   ├── nodes/          # Logic for LLM and Paper analysis
-│   ├── tools/          # Hardware, Paper, and Logseq tools
-│   └── utils/          # Voice STT and Helper functions
-│
-└── tests/              # Unit tests
+└── src/
+    ├── main.py         # Graph compilation and routing logic
+    ├── state.py        # LangGraph State definitions
+    ├── nodes/          # Logic for LLM and Paper analysis
+    ├── tools/          # Hardware, Paper, and Logseq tools
+    └── utils/          # Voice STT and Helper functions
 ```
 
 ## ⚙️ Setup
@@ -43,6 +42,7 @@ ikaris_assistant/
     ```bash
     conda env create -f environment.yml
     conda activate ikaris_env
+    pip install -r requirements.txt
     ```
 2.  **Local Server**:
     Start LM Studio and ensure the local server is running at `http://localhost:1234/v1`.
@@ -51,7 +51,7 @@ ikaris_assistant/
 
 ## 🎤 Usage
 
-Run the assistant:
+Run the assistant GUI:
 ```bash
 python run.py
 ```

@@ -2,7 +2,7 @@ from typing import Literal
 import sqlite3
 import re
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.sqlite import SqliteSaver
 from src.state import IkarisState
@@ -11,12 +11,74 @@ from src.tools.paper_tool import query_papers
 from src.tools.logseq_tool import add_logseq_note
 
 from src.utils.llm_client import llm_instance
+from src.utils.summarizer import summarize_history
 from src.nodes.llm_node import llm_node
 from src.nodes.research_node import research_node
+from src.nodes.retrieval_node import retrieval_node
+from src.nodes.reasoning_node import reasoning_node
 
 # --- 1. Define the Nodes ---
 
-def router_logic(state: IkarisState) -> Literal["hardware_node", "paper_node", "logseq_node", "research_node", "llm_node"]:
+def agent_planning_node(state: IkarisState):
+    """Sets up the initial agent state from the user query."""
+    user_query = state["messages"][-1].content
+    return {
+        "goal": user_query,
+        "open_questions": [user_query], # Start with the main goal as the first question
+        "evidence": [],
+        "confidence": 0.0,
+        "loop_count": 0
+    }
+
+def generate_answer_node(state: IkarisState):
+    """Final Answer Step: Synthesizes evidence into a response."""
+    evidence = state.get("evidence", [])
+    goal = state.get("goal", "")
+    
+    # Format evidence
+    context = ""
+    for i, pkt in enumerate(evidence, 1):
+        content = pkt.get("content", "")
+        meta = pkt.get("metadata", {})
+        
+        # Extract Anchors for Citation
+        anchors = []
+        if 'hierarchy' in meta:
+            h = meta['hierarchy']
+            anchors.append(f"Sec {h.get('parent_section', '?')}")
+        if 'equations' in meta: anchors.append(f"Eq {', '.join(meta['equations'])}")
+        
+        anchor_str = f"| Anchors: {', '.join(anchors)}" if anchors else ""
+        context += f"--- Evidence {i} {anchor_str} ---\n{content}\n\n"
+        
+    prompt = (
+        f"You are Ikaris. Answer the goal ONLY using the provided evidence.\n\n"
+        f"GOAL: {goal}\n\n"
+        f"EVIDENCE:\n{context}\n\n"
+        "Cite anchors (e.g., [Eq. 3], [Sec 4.1]) inline. Be precise and scientific."
+    )
+    
+    response = llm_instance.invoke(prompt)
+    
+    # Optional: Tagging logic (Logseq) could reside here or in a separate node
+    # For now, let's keep it simple and just return the answer
+    return {"messages": [response]}
+
+def summarize_node(state: IkarisState):
+    """Compresses conversation history when it grows too large."""
+    messages = state["messages"]
+    existing_summary = state.get("summary", "")
+    
+    new_summary, trimmed = summarize_history(messages, llm_instance, existing_summary)
+    
+    if new_summary != existing_summary:
+        # Prepend summary context so the LLM always has history awareness
+        summary_msg = SystemMessage(content=f"[Conversation Summary]: {new_summary}")
+        return {"messages": [summary_msg] + trimmed, "summary": new_summary}
+    
+    return {"messages": [], "summary": existing_summary}
+
+def router_logic(state: IkarisState) -> Literal["hardware_node", "agent_planning_node", "logseq_node", "research_node", "llm_node"]:
     """Decides where to send the user's request with improved intelligence."""
     user_msg = state["messages"][-1].content.lower()
     
@@ -27,14 +89,12 @@ def router_logic(state: IkarisState) -> Literal["hardware_node", "paper_node", "
     # 2. DOWNLOADER logic - link, "download" command, or multiple ArXiv IDs
     arxiv_ids = re.findall(r'\d{4}\.\d{4,5}', user_msg)
     if any(word in user_msg for word in ["arxiv.org", "download", "fetch"]) or len(arxiv_ids) > 0:
-        # Extra check: if they are asking a question ABOUT a paper, don't download
-        # UNLESS they have multiple IDs, which implies a batch request
         if len(arxiv_ids) > 1 or not any(word in user_msg for word in ["what", "how", "why", "explain"]):
             return "research_node"
     
-    # 3. RESEARCH/RAG logic - for questions about existing papers
+    # 3. AGENTIC RESEARCH logic - for questions about existing papers
     if any(word in user_msg for word in ["paper", "research", "study", "according to"]):
-        return "paper_node"
+        return "agent_planning_node"
     
     # 4. Personal Logseq notes
     if any(word in user_msg for word in ["note", "notes", "logseq", "journal", "diary"]):
@@ -42,96 +102,34 @@ def router_logic(state: IkarisState) -> Literal["hardware_node", "paper_node", "
         
     return "llm_node"
 
-def hardware_node(state: IkarisState):
-    """Execution node for system stats."""
-    stats = get_system_stats()
-    # Use AIMessage instead of a tuple
-    return {"messages": [AIMessage(content=f"System Status: {stats}")], "hardware_info": stats}
+def reasoning_router(state: IkarisState) -> Literal["retrieval_node", "generate_answer_node"]:
+    """Determines if we need more evidence or if we are ready to answer."""
+    confidence = state.get("confidence", 0.0)
+    loop_count = state.get("loop_count", 0)
+    
+    # SAFETY VALVE: If we've researched 3 times, force an answer
+    if confidence >= 0.8 or loop_count >= 3:
+        return "generate_answer_node"
+    else:
+        return "retrieval_node"
 
-def paper_node(state: IkarisState):
-    """Node to handle research paper queries with smart Logseq tagging."""
-    user_query = state["messages"][-1].content
-    
-    # 1. Get info from the papers
-    context = query_papers(user_query)
-    
-    # 2. Ask LM Studio to summarize that info
-    prompt = (
-        f"You are Ikaris, an advanced assistant running on this ROG Strix. "
-        f"I found this in your papers: {context}\n\n"
-        f"User asked: {user_query}\n"
-        "Give a concise, expert answer. Don't say 'according to the text'—just give me the facts."
-    )
-    response = llm_instance.invoke(prompt)
-    
-    # 3. Smart "Memory Sync" Tagging
-    # Scan history/query for important tags
-    tags = []
-    history_text = " ".join([m.content for m in state["messages"]]).lower()
-    if "mahesh" in history_text:
-        tags.append("# [[Mahesh]]")
-    if any(k in history_text for k in ["msc", "m.sc", "project", "assignment"]):
-        tags.append("# [[MSc Project]]")
-    if "attention" in history_text or "transformer" in history_text:
-        tags.append("# [[LLM Research]]")
-    
-    tag_str = " ".join(tags)
-    
-    # 4. Automatically log this insight with tags
-    log_msg = f"Researched: {user_query} | Insight: {response.content[:100]}..."
-    add_logseq_note(log_msg, tags=tag_str)
-    
-    return {"messages": [response]}
+
+# --- Missing Node Definitions (Added during refactor) ---
+
+def hardware_node(state: IkarisState):
+    """Fetches system stats."""
+    stats = get_system_stats()
+    return {"messages": [SystemMessage(content=f"System Stats: {stats}")]}
 
 def logseq_node(state: IkarisState):
-    """Node to handle personal Logseq note queries."""
-    from src.tools.logseq_tool import search_logseq_notes
-    user_query = state["messages"][-1].content
-    
-    # 1. Search Logseq pages
-    notes_content = search_logseq_notes(user_query)
-    
-    # 2. Ask LM Studio to respond based on personal notes
-    prompt = (
-        f"You are Ikaris. I found these personal notes in your Logseq graph:\n\n{notes_content}\n\n"
-        f"Based on these notes, answer the user's question: {user_query}"
-    )
-    response = llm_instance.invoke(prompt)
-    return {"messages": [response]}
+    """Adds a note to Logseq."""
+    last_msg = state["messages"][-1].content
+    # Simple extraction: treat the whole message as the note
+    result = add_logseq_note(last_msg)
+    return {"messages": [SystemMessage(content=f"Logseq: {result}")]}
 
-# --- 2. Build the Graph with Conditional Edges ---
+# --- 2. Build the Graph with Conditional Edges (Factory Pattern) ---
+# MOVED TO src/agent.py to resolve circular dependencies.
+# def build_graph(): ...
+# ikaris_app = ... 
 
-builder = StateGraph(IkarisState)
-
-# Add our nodes
-builder.add_node("llm_node", llm_node)
-builder.add_node("hardware_node", hardware_node)
-builder.add_node("paper_node", paper_node)
-builder.add_node("logseq_node", logseq_node)
-builder.add_node("research_node", research_node)
-
-# Add the starting logic: START -> (Route Decision)
-builder.add_conditional_edges(
-    START, 
-    router_logic,
-    {
-        "hardware_node": "hardware_node",
-        "paper_node": "paper_node",
-        "logseq_node": "logseq_node",
-        "research_node": "research_node",
-        "llm_node": "llm_node"
-    }
-)
-
-# All paths lead to the END
-builder.add_edge("hardware_node", END)
-builder.add_edge("paper_node", END)
-builder.add_edge("logseq_node", END)
-builder.add_edge("research_node", END)
-builder.add_edge("llm_node", END)
-
-# Persistent Memory Setup
-conn = sqlite3.connect("ikaris_memory.db", check_same_thread=False)
-memory = SqliteSaver(conn)
-
-ikaris_app = builder.compile(checkpointer=memory)
