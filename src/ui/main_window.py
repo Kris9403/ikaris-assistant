@@ -1,22 +1,19 @@
 import os
-import sys # Added sys
-# FIX 1: Force X11 backend to silence Wayland warnings
+import sys
 os.environ["QT_QPA_PLATFORM"] = "xcb"
 
 import re
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
-    QSplitter, QApplication, QMessageBox # Added QMessageBox
+    QSplitter, QApplication, QMessageBox
 )
 from PyQt5.QtCore import Qt
 from src.ui.chat_widget import ChatWidget
 from src.ui.sidebar_widget import SidebarWidget
 from src.ui.status_bar import StatusBarWidget
 from src.ui.workers import GraphWorker, LLMWorker, IndexWorker
-from src.agent import get_ikaris_app
 from src.main import router_logic
 from src.utils.llm_client import stream_lm_studio
-from src.utils.voice import get_voice_input
 
 
 class IkarisMainWindow(QMainWindow):
@@ -25,19 +22,20 @@ class IkarisMainWindow(QMainWindow):
     Dark-themed researcher UI with chat, paper sidebar, and system status.
     """
 
-    def __init__(self):
+    def __init__(self, agent=None):
         super().__init__()
         self.setWindowTitle("Ikaris Assistant 🦾")
         self.setMinimumSize(1000, 650)
         self.resize(1200, 750)
 
+        self.agent = agent
         self.config = {"configurable": {"thread_id": "krishna_research_session"}}
         
         # Keep explicit references to workers to prevent "QThread destroyed" crashes
         self._current_worker = None
         self._index_worker = None 
 
-        self.ikaris_app = get_ikaris_app()
+        self.ikaris_app = agent.app if agent else None
         self._setup_ui()
         self._connect_signals()
 
@@ -154,14 +152,20 @@ class IkarisMainWindow(QMainWindow):
             self.chat.add_system_message("⚠️ I'm busy thinking. Please wait.")
             return
 
+        # Check if audio stack supports speech input
+        audio = self.agent.audio if self.agent else None
+        if audio is None or not getattr(audio, 'has_stt', False):
+            self.chat.add_system_message("⚠️ Audio is disabled. Use text input (run with audio=npu or audio=cpu).")
+            return
+
         self.chat.set_input_enabled(False)
         self.chat.add_system_message("🎤 Listening...")
         QApplication.processEvents()
 
         try:
-            text = get_voice_input()
+            text = audio.listen()
             if text and not text.startswith("Error"):
-                self.chat.add_system_message(f"Heard: \"{text}\"")
+                self.chat.add_system_message(f'Heard: "{text}"')
                 self._on_message(text)
             else:
                 self.chat.add_system_message(f"⚠️ {text}")

@@ -1,14 +1,19 @@
-from src.tools.research_tool import fetch_multi_papers
-from src.tools.logseq_tool import add_logseq_note
-from src.tools.paper_tool import ingest_papers
 from langchain_core.messages import AIMessage
 
-def research_node(state):
+def research_node(state, tools):
     """Batch paper download and indexing node."""
     user_msg = state["messages"][-1].content
     
+    # Extract tools
+    research_tool = next((t for t in tools if type(t).__name__ == "ResearchTool"), None)
+    logseq_tool = next((t for t in tools if type(t).__name__ == "LogseqTool"), None)
+    paper_tool = next((t for t in tools if type(t).__name__ == "PaperTool"), None)
+    
+    if not research_tool:
+        return {"messages": [AIMessage(content="ResearchTool is disabled.")]}
+    
     # Use the tool to find and download all IDs in the text
-    batch_results = fetch_multi_papers(user_msg)
+    batch_results = research_tool.fetch_multi(user_msg)
     
     if isinstance(batch_results, str):
         return {"messages": [AIMessage(content=batch_results)]}
@@ -27,7 +32,7 @@ def research_node(state):
                 f"  - **Summary**: {item['summary'][:300]}...\n"
                 f"  - **Local Path**: `{item['path']}`"
             )
-            add_logseq_note(logseq_entry)
+            if logseq_tool: logseq_tool.add_note(logseq_entry)
             new_papers_count += 1
         elif "Skipped" in str(item):
             skipped_count += 1
@@ -35,8 +40,8 @@ def research_node(state):
             errors.append(str(item))
 
     # ONE single re-index for the whole batch to save compute
-    if new_papers_count > 0:
-        ingest_papers() 
+    if new_papers_count > 0 and paper_tool:
+        paper_tool.ingest() 
 
     summary = f"Batch process complete.\n- New papers: {new_papers_count}\n- Skipped: {skipped_count}"
     if errors:

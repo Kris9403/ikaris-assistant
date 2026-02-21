@@ -2,7 +2,7 @@ import platform
 from src.utils.llm_client import call_lm_studio
 from langchain_core.messages import AIMessage
 
-def llm_node(state):
+def llm_node(state, llm):
     """
     Technical LLM processing node with the Ikaris persona.
     """
@@ -21,6 +21,6 @@ def llm_node(state):
     )
     
     # Generate response
-    response = call_lm_studio(messages, system_prompt)
+    response = call_lm_studio(llm, messages, system_prompt)
     
     return {"messages": [AIMessage(content=response)]}

@@ -1,22 +1,25 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage
 
-# Initialize the shared client pointing to LM Studio local server
-llm_instance = ChatOpenAI(base_url="http://localhost:1234/v1", api_key="lm-studio")
+def LMStudioClient(base_url: str, model_name: str, temperature: float):
+    return ChatOpenAI(base_url=base_url, model=model_name, temperature=temperature, api_key="lm-studio")
 
-def call_lm_studio(messages, system_prompt):
+def OllamaClient(base_url: str, model_name: str, temperature: float):
+    return ChatOpenAI(base_url=base_url, model=model_name, temperature=temperature, api_key="ollama")
+
+def call_lm_studio(llm, messages, system_prompt):
     """
     Calls the local LM Studio server with a system prompt and conversation history.
     """
     formatted_messages = [SystemMessage(content=system_prompt)] + messages
-    response = llm_instance.invoke(formatted_messages)
+    response = llm.invoke(formatted_messages)
     return response.content
 
-def stream_lm_studio(messages, system_prompt):
+def stream_lm_studio(llm, messages, system_prompt):
     """
     Streams tokens from LM Studio. Yields each token chunk as a string.
     """
     formatted_messages = [SystemMessage(content=system_prompt)] + messages
-    for chunk in llm_instance.stream(formatted_messages):
+    for chunk in llm.stream(formatted_messages):
         if chunk.content:
             yield chunk.content

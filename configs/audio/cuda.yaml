@@ -1,0 +1,16 @@
+# configs/audio/cuda.yaml
+# CUDA GPU profile — Whisper float16 + Kokoro TTS
+_target_: src.utils.audio.SherpaAudioStack
+
+provider: cuda
+device: cuda
+
+stt:
+  type: whisper
+  model_path: models/stt/whisper-small.onnx
+  tokens: models/stt/tokens.txt
+
+tts:
+  type: kokoro
+  model_path: models/tts/kokoro.onnx
+  voice: en_US

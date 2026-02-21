@@ -1,0 +1,16 @@
+# configs/audio/cpu.yaml
+# CPU fallback — Whisper INT8 + Piper TTS
+_target_: src.utils.audio.SherpaAudioStack
+
+provider: cpu
+device: cpu
+
+stt:
+  type: whisper
+  model_path: models/stt/whisper-base-int8.onnx
+  tokens: models/stt/tokens.txt
+
+tts:
+  type: piper
+  model_path: models/tts/piper-en.onnx
+  voice: en_US

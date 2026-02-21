@@ -9,72 +9,80 @@ from src.main import (
     agent_planning_node, retrieval_node, reasoning_node, generate_answer_node,
     router_logic, reasoning_router
 )
+from src.nodes.synthesis_node import synthesis_node
 
 # --- Build the Graph with Conditional Edges (Factory Pattern) ---
 
-def build_graph():
-    """Constructs and compiles the StateGraph. Call this at runtime."""
-    builder = StateGraph(IkarisState)
+class Agent:
+    def __init__(self, llm, tools, ui=None, audio=None):
+        self.llm = llm
+        self.tools = tools
+        self.ui = ui
+        self.audio = audio
+        self.app = self.build_graph()
 
-    # Add nodes
-    builder.add_node("summarize_node", summarize_node)
-    builder.add_node("llm_node", llm_node)
-    builder.add_node("hardware_node", hardware_node)
-    builder.add_node("logseq_node", logseq_node)
-    builder.add_node("research_node", research_node)
+    def build_graph(self):
+        """Constructs and compiles the StateGraph."""
+        builder = StateGraph(IkarisState)
 
-    # Agentic Loop Nodes
-    builder.add_node("agent_planning_node", agent_planning_node)
-    builder.add_node("retrieval_node", retrieval_node)
-    builder.add_node("reasoning_node", reasoning_node)
-    builder.add_node("generate_answer_node", generate_answer_node)
+        # Add nodes with injected dependencies
+        builder.add_node("summarize_node", lambda state: summarize_node(state, self.llm))
+        builder.add_node("llm_node", lambda state: llm_node(state, self.llm))
+        builder.add_node("hardware_node", hardware_node)
+        builder.add_node("logseq_node", lambda state: logseq_node(state, self.tools))
+        builder.add_node("research_node", lambda state: research_node(state, self.tools))
 
-    # Flow: START -> summarize -> router -> node -> END
-    builder.add_edge(START, "summarize_node")
-    builder.add_conditional_edges(
-        "summarize_node", 
-        router_logic,
-        {
-            "hardware_node": "hardware_node",
-            "agent_planning_node": "agent_planning_node",
-            "logseq_node": "logseq_node",
-            "research_node": "research_node",
-            "llm_node": "llm_node"
-        }
-    )
+        # Agentic Loop Nodes
+        builder.add_node("agent_planning_node", agent_planning_node)
+        builder.add_node("retrieval_node", lambda state: retrieval_node(state, self.tools))
+        builder.add_node("reasoning_node", lambda state: reasoning_node(state, self.llm))
+        builder.add_node("generate_answer_node", lambda state: generate_answer_node(state, self.llm))
+        
+        # Synthesis Node: comparative analysis across multi-source evidence
+        builder.add_node("synthesis_node", lambda state: synthesis_node(state, self.llm))
 
-    # Agentic Loop Edges
-    builder.add_edge("agent_planning_node", "retrieval_node")
-    builder.add_edge("retrieval_node", "reasoning_node")
-    builder.add_conditional_edges(
-        "reasoning_node",
-        reasoning_router,
-        {
-            "retrieval_node": "retrieval_node",
-            "generate_answer_node": "generate_answer_node"
-        }
-    )
-    builder.add_edge("generate_answer_node", END)
+        # Flow: START -> summarize -> router -> node -> END
+        builder.add_edge(START, "summarize_node")
+        builder.add_conditional_edges(
+            "summarize_node", 
+            router_logic,
+            {
+                "hardware_node": "hardware_node",
+                "agent_planning_node": "agent_planning_node",
+                "logseq_node": "logseq_node",
+                "research_node": "research_node",
+                "llm_node": "llm_node"
+            }
+        )
 
-    # All paths lead to the END
-    builder.add_edge("hardware_node", END)
-    # builder.add_edge("paper_node", END) # Removed legacy node
-    builder.add_edge("logseq_node", END)
-    builder.add_edge("research_node", END)
-    builder.add_edge("llm_node", END)
+        # Agentic Loop Edges
+        builder.add_edge("agent_planning_node", "retrieval_node")
+        builder.add_edge("retrieval_node", "reasoning_node")
+        builder.add_conditional_edges(
+            "reasoning_node",
+            reasoning_router,
+            {
+                "retrieval_node": "retrieval_node",
+                "generate_answer_node": "generate_answer_node"
+            }
+        )
+        builder.add_edge("generate_answer_node", END)
+        
+        # Research -> Synthesis -> END (comparative analysis path)
+        builder.add_edge("research_node", "synthesis_node")
+        builder.add_edge("synthesis_node", END)
 
-    # Persistent Memory Setup
-    # Note: connect() check_same_thread=False is needed for multi-threaded GUI
-    conn = sqlite3.connect("ikaris_memory.db", check_same_thread=False)
-    memory = SqliteSaver(conn)
+        # All paths lead to the END
+        builder.add_edge("hardware_node", END)
+        builder.add_edge("logseq_node", END)
+        builder.add_edge("llm_node", END)
 
-    return builder.compile(checkpointer=memory)
+        # Persistent Memory Setup
+        conn = sqlite3.connect("ikaris_memory.db", check_same_thread=False)
+        memory = SqliteSaver(conn)
 
-_ikaris_app = None
+        return builder.compile(checkpointer=memory)
 
-def get_ikaris_app():
-    global _ikaris_app
-    if _ikaris_app is None:
-        _ikaris_app = build_graph()
-    return _ikaris_app
-
+    def run(self):
+        # For the GUI, we pass this agent object to GUI bootstrap
+        pass

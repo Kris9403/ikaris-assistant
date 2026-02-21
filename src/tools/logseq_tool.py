@@ -60,3 +60,14 @@ def search_logseq_notes(query: str) -> str:
         formatted_results.append(f"--- From Page: {name} ---\n{snippet}")
         
     return "\n\n".join(formatted_results)
+
+class LogseqTool:
+    def __init__(self, **kwargs):
+        self.config = kwargs
+        # Optional: could update LOGSEQ_GRAPH_PATH to self.config.get('path') if passed
+    
+    def add_note(self, content: str, tags: str = ""):
+        return add_logseq_note(content, tags)
+    
+    def search(self, query: str):
+        return search_logseq_notes(query)

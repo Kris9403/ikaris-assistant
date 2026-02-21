@@ -1,0 +1,3 @@
+# configs/tools/research.yaml
+_target_: src.tools.research_tool.ResearchTool
+enabled: true

@@ -1,0 +1,7 @@
+# configs/paths/windows.yaml
+# Windows profile
+root_dir: ${hydra:runtime.cwd}
+data_dir: ${root_dir}/data
+papers_dir: ${root_dir}/papers
+logseq_path: "${oc.env:USERPROFILE}\\Documents\\LogSeq\\Ikaris_Graph"
+db_path: ${root_dir}/ikaris_memory.db

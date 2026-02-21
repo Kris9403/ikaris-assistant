@@ -1,0 +1,3 @@
+# configs/tools/paper.yaml
+_target_: src.tools.paper_tool.PaperTool
+enabled: true

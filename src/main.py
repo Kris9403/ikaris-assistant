@@ -7,10 +7,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.sqlite import SqliteSaver
 from src.state import IkarisState
 from src.tools.hardware import get_system_stats
-from src.tools.paper_tool import query_papers
-from src.tools.logseq_tool import add_logseq_note
 
-from src.utils.llm_client import llm_instance
 from src.utils.summarizer import summarize_history
 from src.nodes.llm_node import llm_node
 from src.nodes.research_node import research_node
@@ -30,16 +27,18 @@ def agent_planning_node(state: IkarisState):
         "loop_count": 0
     }
 
-def generate_answer_node(state: IkarisState):
+def generate_answer_node(state: IkarisState, llm):
     """Final Answer Step: Synthesizes evidence into a response."""
     evidence = state.get("evidence", [])
     goal = state.get("goal", "")
     
-    # Format evidence
+    # Format evidence — handles unified Evidence dicts and legacy dicts
     context = ""
     for i, pkt in enumerate(evidence, 1):
-        content = pkt.get("content", "")
-        meta = pkt.get("metadata", {})
+        text = pkt.get("text", pkt.get("content", ""))
+        title = pkt.get("title", "")
+        source = pkt.get("source", "unknown")
+        meta = pkt.get("meta", pkt.get("metadata", {}))
         
         # Extract Anchors for Citation
         anchors = []
@@ -48,28 +47,27 @@ def generate_answer_node(state: IkarisState):
             anchors.append(f"Sec {h.get('parent_section', '?')}")
         if 'equations' in meta: anchors.append(f"Eq {', '.join(meta['equations'])}")
         
-        anchor_str = f"| Anchors: {', '.join(anchors)}" if anchors else ""
-        context += f"--- Evidence {i} {anchor_str} ---\n{content}\n\n"
+        anchor_str = f" | Anchors: {', '.join(anchors)}" if anchors else ""
+        source_tag = f"[{source.upper()}]" if source != "unknown" else ""
+        title_tag = f" — {title}" if title else ""
+        context += f"--- Evidence {i} {source_tag}{title_tag}{anchor_str} ---\n{text}\n\n"
         
     prompt = (
         f"You are Ikaris. Answer the goal ONLY using the provided evidence.\n\n"
         f"GOAL: {goal}\n\n"
         f"EVIDENCE:\n{context}\n\n"
-        "Cite anchors (e.g., [Eq. 3], [Sec 4.1]) inline. Be precise and scientific."
+        "Cite evidence by [Evidence N] tags inline. Be precise and scientific."
     )
     
-    response = llm_instance.invoke(prompt)
-    
-    # Optional: Tagging logic (Logseq) could reside here or in a separate node
-    # For now, let's keep it simple and just return the answer
+    response = llm.invoke(prompt)
     return {"messages": [response]}
 
-def summarize_node(state: IkarisState):
+def summarize_node(state: IkarisState, llm):
     """Compresses conversation history when it grows too large."""
     messages = state["messages"]
     existing_summary = state.get("summary", "")
     
-    new_summary, trimmed = summarize_history(messages, llm_instance, existing_summary)
+    new_summary, trimmed = summarize_history(messages, llm, existing_summary)
     
     if new_summary != existing_summary:
         # Prepend summary context so the LLM always has history awareness
@@ -121,15 +119,61 @@ def hardware_node(state: IkarisState):
     stats = get_system_stats()
     return {"messages": [SystemMessage(content=f"System Stats: {stats}")]}
 
-def logseq_node(state: IkarisState):
+def logseq_node(state: IkarisState, tools):
     """Adds a note to Logseq."""
     last_msg = state["messages"][-1].content
-    # Simple extraction: treat the whole message as the note
-    result = add_logseq_note(last_msg)
+    logseq_tool = next((t for t in tools if type(t).__name__ == "LogseqTool"), None)
+    
+    if logseq_tool:
+        result = logseq_tool.add_note(last_msg)
+    else:
+        result = "LogseqTool is disabled or not configured."
+        
     return {"messages": [SystemMessage(content=f"Logseq: {result}")]}
 
 # --- 2. Build the Graph with Conditional Edges (Factory Pattern) ---
 # MOVED TO src/agent.py to resolve circular dependencies.
 # def build_graph(): ...
 # ikaris_app = ... 
+
+def start_agent_loop(cfg, agent):
+    """Entry point from run.py after Hydra initialization."""
+    import os
+    import sys
+    
+    # --- 1. Linux GUI Fix (Prevents "Wayland" warnings & crashes) ---
+    os.environ["QT_QPA_PLATFORM"] = "xcb"
+    os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
+    
+    # --- 2. Hugging Face Optimization (The "Reuse Forever" Fix) ---
+    # tells HF to NEVER check the internet for models (forces local cache)
+    os.environ["HF_HUB_OFFLINE"] = "1" 
+    # Silences the "Unauthenticated" warning
+    os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
+    # Silences the "Loading weights" progress bars and info logs
+    os.environ["TRANSFORMERS_VERBOSITY"] = "error"
+    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3" 
+    
+    from transformers import logging as hf_logging
+    hf_logging.set_verbosity_error()
+
+    # No need to overwrite global LLM client anymore!
+    # Global state is completely removed
+    
+    from PyQt5.QtWidgets import QApplication
+    from src.ui.main_window import IkarisMainWindow
+    from src.ui.styles import DARK_THEME
+
+    if not QApplication.instance():
+        app = QApplication(sys.argv)
+    else:
+        app = QApplication.instance()
+        
+    app.setApplicationName("Ikaris Assistant")
+    app.setStyleSheet(DARK_THEME)
+
+    window = IkarisMainWindow(agent)
+    window.show()
+
+    sys.exit(app.exec_())
 

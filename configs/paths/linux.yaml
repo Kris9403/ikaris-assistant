@@ -1,0 +1,7 @@
+# configs/paths/linux.yaml
+# Generic Linux profile (non-ROG Strix)
+root_dir: ${hydra:runtime.cwd}
+data_dir: ${root_dir}/data
+papers_dir: ${root_dir}/papers
+logseq_path: "${oc.env:HOME}/LogSeq/Ikaris_Graph"
+db_path: ${root_dir}/ikaris_memory.db

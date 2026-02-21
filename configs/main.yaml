@@ -1,0 +1,14 @@
+# configs/main.yaml
+defaults:
+  - _self_
+  - paths: strix
+  - model: lm_studio
+  - ui: default
+  - audio: npu
+  - tools/paper@tools.paper
+  - tools/research@tools.research
+  - tools/logseq@tools.logseq
+
+# Hardware optimization flags
+device: "cuda" # Switch to "cpu" if GPU is busy
+npu_enabled: true

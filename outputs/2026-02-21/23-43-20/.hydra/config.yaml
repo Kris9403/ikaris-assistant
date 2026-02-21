@@ -1,0 +1,25 @@
+device: cuda
+npu_enabled: true
+paths:
+  root_dir: ${hydra:runtime.cwd}
+  data_dir: ${root_dir}/data
+  papers_dir: ${root_dir}/papers
+  logseq_path: /home/krishna/Desktop/LogSeq/Ikaris_Graph
+  db_path: ${root_dir}/ikaris_memory.db
+model:
+  _target_: src.utils.llm_client.LMStudioClient
+  base_url: http://localhost:1234/v1
+  model_name: local-model
+  temperature: 0.7
+ui:
+  theme: dark
+tools:
+  paper:
+    _target_: src.tools.paper_tool.PaperTool
+    enabled: true
+  research:
+    _target_: src.tools.research_tool.ResearchTool
+    enabled: true
+  logseq:
+    _target_: src.tools.logseq_tool.LogseqTool
+    enabled: true

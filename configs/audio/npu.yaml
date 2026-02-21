@@ -1,0 +1,16 @@
+# configs/audio/npu.yaml
+# Intel Core Ultra NPU profile — Sherpa-ONNX + OpenVINO
+_target_: src.utils.audio.SherpaAudioStack
+
+provider: openvino
+device: NPU
+
+stt:
+  type: zipformer_streaming
+  model_path: models/stt/zipformer.onnx
+  tokens: models/stt/tokens.txt
+
+tts:
+  type: kokoro
+  model_path: models/tts/kokoro.onnx
+  voice: en_US

@@ -1,0 +1,3 @@
+# configs/tools/logseq.yaml
+_target_: src.tools.logseq_tool.LogseqTool
+enabled: true

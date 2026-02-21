@@ -1,41 +1,30 @@
-"""
-Ikaris Assistant — GUI Entry Point
-Launches the PyQt5 researcher interface.
-"""
-import os
-import sys
+import hydra
+from omegaconf import DictConfig
+from src.utils.instantiators import instantiate_model, instantiate_tools, instantiate_audio
+from src.agent import Agent
 
-# --- 1. Linux GUI Fix (Prevents "Wayland" warnings & crashes) ---
-os.environ["QT_QPA_PLATFORM"] = "xcb"
-
-# --- 2. Hugging Face Optimization (The "Reuse Forever" Fix) ---
-# tells HF to NEVER check the internet for models (forces local cache)
-os.environ["HF_HUB_OFFLINE"] = "1" 
-# Silences the "Unauthenticated" warning
-os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
-# Silences the "Loading weights" progress bars and info logs
-os.environ["TRANSFORMERS_VERBOSITY"] = "error"
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3" 
-
-from transformers import logging as hf_logging
-hf_logging.set_verbosity_error()
-
-from PyQt5.QtWidgets import QApplication
-from src.ui.main_window import IkarisMainWindow
-from src.ui.styles import DARK_THEME
-
-def main():
-    # Fix for high-DPI displays on Linux
-    os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
+@hydra.main(version_base="1.3", config_path="configs", config_name="main")
+def main(cfg: DictConfig):
+    print(f"--- Ikaris OS Initialized on {cfg.device} ---")
+    print(f"Logseq Path: {cfg.paths.logseq_path}")
     
-    app = QApplication(sys.argv)
-    app.setApplicationName("Ikaris Assistant")
-    app.setStyleSheet(DARK_THEME)
-
-    window = IkarisMainWindow()
-    window.show()
-
-    sys.exit(app.exec_())
+    # Instantiate all components from Hydra config
+    llm_client = instantiate_model(cfg)
+    tools = instantiate_tools(cfg)
+    audio = instantiate_audio(cfg)
+    
+    print(f"Audio Stack: {type(audio).__name__} (capabilities: {getattr(audio, 'capabilities', [])})")
+    
+    # Initialize Agent with full dependency injection
+    agent = Agent(
+        llm=llm_client,
+        tools=tools,
+        audio=audio
+    )
+    
+    # Start the GUI loop
+    from src.main import start_agent_loop
+    start_agent_loop(cfg, agent)
 
 if __name__ == "__main__":
     main()

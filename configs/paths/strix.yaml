@@ -1,0 +1,6 @@
+# configs/paths/strix.yaml
+root_dir: ${hydra:runtime.cwd}
+data_dir: ${root_dir}/data
+papers_dir: ${root_dir}/papers
+logseq_path: "/home/krishna/Desktop/LogSeq/Ikaris_Graph" # Your specific Linux path
+db_path: ${root_dir}/ikaris_memory.db

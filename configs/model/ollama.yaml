@@ -1,0 +1,5 @@
+# configs/model/ollama.yaml
+_target_: src.utils.llm_client.OllamaClient
+base_url: "http://localhost:11434/v1"
+model_name: "llama3"
+temperature: 0.7

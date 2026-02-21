@@ -79,3 +79,13 @@ def fetch_and_save_paper(query: str):
         }
     except Exception as e:
         return f"Arxiv Download Error: {str(e)}"
+
+class ResearchTool:
+    def __init__(self, **kwargs):
+        self.config = kwargs
+    
+    def fetch_multi(self, input_text: str):
+        return fetch_multi_papers(input_text)
+    
+    def fetch_single(self, query: str):
+        return fetch_and_save_paper(query)
