@@ -112,6 +112,8 @@ class PubMedTool:
                     "journal": "Book Chapter",
                     "year": "Unknown",
                     "authors": [],
+                    "doi": None,
+                    "pmcid": None,
                 }
             return {
                 "title": "No Title",
@@ -119,6 +121,8 @@ class PubMedTool:
                 "journal": "Unknown",
                 "year": "Unknown",
                 "authors": [],
+                "doi": None,
+                "pmcid": None,
             }
 
         title    = (art.findtext("ArticleTitle") or "No Title").strip()
@@ -130,6 +134,8 @@ class PubMedTool:
             or "Unknown"
         )
         authors = self._extract_authors(art)
+        doi = root.findtext(".//ArticleId[@IdType='doi']")
+        pmcid = root.findtext(".//ArticleId[@IdType='pmc']")
 
         return {
             "title": title,
@@ -137,6 +143,8 @@ class PubMedTool:
             "journal": journal,
             "year": year,
             "authors": authors,
+            "doi": doi,
+            "pmcid": pmcid,
         }
 
     @staticmethod
@@ -199,6 +207,8 @@ class PubMedTool:
                             "journal": info["journal"],
                             "year":    info["year"],
                             "authors": info["authors"],
+                            "doi":     info.get("doi"),
+                            "pmcid":   info.get("pmcid"),
                         },
                     ))
                 except Exception as e:
