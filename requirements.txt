@@ -1,5 +1,5 @@
 # ============================================================
-# Ikaris Assistant — requirements.txt (v1.2.0)
+# Ikaris Assistant — requirements.txt (v1.2.2)
 # ============================================================
 # Install:  pip install -r requirements.txt
 # Note   :  CUDA-specific wheels (torch, faiss-gpu) require a

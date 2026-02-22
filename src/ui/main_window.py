@@ -90,7 +90,7 @@ class IkarisMainWindow(QMainWindow):
             any(w in msg_lower for w in ["arxiv.org", "download", "fetch"]) or
             any(w in msg_lower for w in ["pubmed", "pmid"]) or
             bool(re.findall(r'\d{4}\.\d{4,5}', msg_lower)) or
-            any(w in msg_lower for w in ["paper", "research", "study", "according to"]) or
+            any(w in msg_lower for w in ["paper", "research", "study", "according to", "search"]) or
             any(w in msg_lower for w in ["note", "notes", "logseq", "journal", "diary"])
         )
 
@@ -111,7 +111,13 @@ class IkarisMainWindow(QMainWindow):
             "You are Ikaris, a highly technical research assistant for a Computer Science Master's student. "
             f"You are running locally on a ROG Strix G16 (RTX 5070 Ti, 32GB RAM) hosted on {os_info}. "
             "Your tone is professional, expert, yet grounded and slightly witty. "
-            "Focus on delivering clear, actionable research insights and system stats analysis."
+            "Focus on delivering clear, actionable research insights and system stats analysis.\n\n"
+            "STRICT BEHAVIOR RULES:\n"
+            "- You must NEVER fabricate system metrics.\n"
+            "- You must NEVER claim to check logs unless you actually ran a tool.\n"
+            "- If user input is ambiguous, ask a clarification question.\n"
+            "- Do not invent GPU usage, RAM stats, or kernel versions.\n"
+            "- Respond concisely unless user requests elaboration."
         )
 
         from langchain_core.messages import HumanMessage

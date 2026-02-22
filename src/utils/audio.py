@@ -352,7 +352,9 @@ class SherpaAudioStack:
             if speech_detected and self._partial_callback is not None:
                 while recognizer.is_ready(stream):
                     recognizer.decode_stream(stream)
-                partial = recognizer.get_result(stream).text.strip()
+                res = recognizer.get_result(stream)
+                partial = res if isinstance(res, str) else res.text
+                partial = partial.strip()
                 if partial and partial != last_partial:
                     last_partial = partial
                     try:
@@ -389,12 +391,13 @@ class SherpaAudioStack:
         while recognizer.is_ready(stream):
             recognizer.decode_stream(stream)
 
-        result = recognizer.get_result(stream)
-        text = result.text.strip()
+        res = recognizer.get_result(stream)
+        text = res if isinstance(res, str) else res.text
+        text = text.strip()
         duration = time.time() - recording_start
 
         # Extract confidence
-        confidence = self._extract_confidence(result)
+        confidence = self._extract_confidence(res)
 
         log.info(f"[Audio] Transcribed (streaming): '{text}' "
                  f"(confidence={confidence:.2f}, duration={duration:.1f}s)")
@@ -402,7 +405,7 @@ class SherpaAudioStack:
         # Flush VAD state
         if self._vad is not None:
             with self._lock:
-                self._vad.clear()
+                self._vad.reset()
 
         return STTResult(
             text=text if text else "Error: No speech detected.",
@@ -479,11 +482,12 @@ class SherpaAudioStack:
         stream.accept_waveform(fs, audio)
         recognizer.decode(stream)
 
-        result = stream.result
-        text = result.text.strip()
+        res = stream.result
+        text = res if isinstance(res, str) else res.text
+        text = text.strip()
 
         # Extract confidence
-        confidence = self._extract_confidence(result)
+        confidence = self._extract_confidence(res)
 
         log.info(f"[Audio] Transcribed (offline): '{text}' "
                  f"(confidence={confidence:.2f}, duration={duration:.1f}s)")
@@ -491,7 +495,7 @@ class SherpaAudioStack:
         # Flush VAD state
         if self._vad is not None:
             with self._lock:
-                self._vad.clear()
+                self._vad.reset()
 
         return STTResult(
             text=text if text else "Error: No speech detected.",
@@ -587,11 +591,27 @@ class SherpaAudioStack:
 
         try:
             if tts_type == "kokoro":
-                self._tts_engine = sherpa.OfflineTts(
+                tokens_path = self.tts_cfg.get("tokens", "models/tts/kokoro-tokens.txt")
+                voices_path = self.tts_cfg.get("voices", "models/tts/kokoro-voices.bin")
+                
+                kokoro_config = sherpa.OfflineTtsKokoroModelConfig(
                     model=model_path,
-                    provider=self.provider,
-                    num_threads=2,
+                    voices=voices_path,
+                    tokens=tokens_path,
+                    data_dir="models/tts",
                 )
+                
+                model_config = sherpa.OfflineTtsModelConfig(
+                    kokoro=kokoro_config,
+                    provider=self.provider
+                )
+                
+                tts_config = sherpa.OfflineTtsConfig(
+                    model=model_config,
+                    max_num_sentences=1
+                )
+                
+                self._tts_engine = sherpa.OfflineTts(config=tts_config)
             else:
                 # Piper VITS
                 self._tts_engine = sherpa.OfflineTts(

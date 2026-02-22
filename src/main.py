@@ -107,9 +107,9 @@ def router_logic(state: IkarisState) -> Literal["hardware_node", "agent_planning
     is_pubmed = any(w in user_msg for w in ["pubmed", "pmid"])
     is_download = any(w in user_msg for w in ["arxiv.org", "download", "fetch"])
     
-    # PubMed explicit request (keyword + PMID)
-    if is_pubmed and pmids:
-        log.info(f"[Router] → research_node (PubMed PMIDs: {pmids})")
+    # PubMed keyword search OR PMID fetch
+    if is_pubmed:
+        log.info(f"[Router] → research_node (PubMed search)")
         return "research_node"
     
     # ArXiv download
@@ -118,8 +118,8 @@ def router_logic(state: IkarisState) -> Literal["hardware_node", "agent_planning
             log.info(f"[Router] → research_node (ArXiv: {arxiv_ids})")
             return "research_node"
     
-    # 3. AGENTIC RESEARCH logic - for questions about existing papers
-    if any(word in user_msg for word in ["paper", "research", "study", "according to"]):
+    # 3. AGENTIC RESEARCH logic - for questions about existing papers or general searches
+    if any(word in user_msg for word in ["paper", "research", "study", "according to", "search"]):
         log.info("[Router] → agent_planning_node")
         return "agent_planning_node"
     

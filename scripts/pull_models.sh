@@ -119,25 +119,25 @@ download_whisper_base() {
 #   models/stt/tokens.txt
 # ============================================================
 download_zipformer() {
-    local ARCHIVE="sherpa-onnx-zipformer-gigaspeech-2023-12-12.tar.bz2"
+    local ARCHIVE="sherpa-onnx-streaming-zipformer-en-2023-02-21.tar.bz2"
     local URL="${GH_BASE}/asr-models/${ARCHIVE}"
-    local EXTRACT_DIR="sherpa-onnx-zipformer-gigaspeech-2023-12-12"
+    local EXTRACT_DIR="sherpa-onnx-streaming-zipformer-en-2023-02-21"
 
     if [[ -f "$STT_DIR/zipformer-encoder.onnx" ]]; then
         ok "Zipformer already exists — skipping"
         return
     fi
 
-    info "Downloading Zipformer English (~250 MB) ..."
+    info "Downloading Zipformer English (~140 MB) ..."
     wget -q --show-progress -O "$STT_DIR/$ARCHIVE" "$URL"
 
     info "Extracting ..."
     tar xf "$STT_DIR/$ARCHIVE" -C "$STT_DIR"
 
     local SRC="$STT_DIR/$EXTRACT_DIR"
-    cp "$SRC"/*encoder*.onnx  "$STT_DIR/zipformer-encoder.onnx"  2>/dev/null || true
-    cp "$SRC"/*decoder*.onnx  "$STT_DIR/zipformer-decoder.onnx"  2>/dev/null || true
-    cp "$SRC"/*joiner*.onnx   "$STT_DIR/zipformer-joiner.onnx"   2>/dev/null || true
+    cp "$SRC"/encoder-epoch-99-avg-1.onnx  "$STT_DIR/zipformer-encoder.onnx"  2>/dev/null || true
+    cp "$SRC"/decoder-epoch-99-avg-1.onnx  "$STT_DIR/zipformer-decoder.onnx"  2>/dev/null || true
+    cp "$SRC"/joiner-epoch-99-avg-1.onnx   "$STT_DIR/zipformer-joiner.onnx"   2>/dev/null || true
 
     find "$SRC" -name "tokens.txt" -exec cp {} "$STT_DIR/tokens.txt" \; 2>/dev/null || true
 

@@ -21,9 +21,27 @@ def research_node(state, tools):
     is_pubmed = any(w in user_lower for w in ["pubmed", "pmid"])
     pmids = re.findall(r'\b(\d{6,10})\b', user_msg)  # Modern PMIDs are 6-10 digits
     
-    if is_pubmed and pmids:
+    if is_pubmed:
         if pubmed_tool and pubmed_tool.enabled:
-            return _handle_pubmed(pmids, pubmed_tool, logseq_tool, paper_tool)
+            if pmids:
+                return _handle_pubmed(pmids, pubmed_tool, logseq_tool, paper_tool)
+            else:
+                # General PubMed search without specific PMIDs
+                results = pubmed_tool.run(user_msg)
+                
+                if not results:
+                    return {"messages": [AIMessage(content="I couldn't find any relevant papers on PubMed for that query.")]}
+                    
+                # Format the results mimicking hybrid RAG output
+                output = f"🔬 **PubMed Search Results** ({len(results)} papers found)\n\n"
+                for i, ev in enumerate(results, 1):
+                    output += f"### {i}. {ev.title}\n"
+                    # Include the PMID for easy download later
+                    output += f"**PMID**: `{ev.id}`\n"
+                    output += f"**Abstract**: {ev.text[:400]}...\n\n"
+                    
+                output += "*(Use the PMID to download a specific paper, e.g., 'download pmid 123456')*"
+                return {"messages": [AIMessage(content=output)]}
         else:
             return {"messages": [AIMessage(
                 content="❌ PubMed tool is disabled in config. "
@@ -105,7 +123,14 @@ def _handle_pubmed(pmids, pubmed_tool, logseq_tool, paper_tool=None):
                 pdf_path = pubmed_tool.download_pdf(pmcid)
                 if pdf_path:
                     entry += f"\n📥 PDF saved to: `{pdf_path}`\n"
-                    new_pdfs_count += 1
+                else:
+                    entry += "\n🔒 Full-text PDF not available on PubMed Central (likely paywalled).\n"
+            else:
+                entry += "\n🔒 No PMCID found — publisher-only access.\n"
+                
+            doi = info.get("doi")
+            if doi:
+                entry += f"🌐 Publisher link: https://doi.org/{doi}\n"
             
             results.append(entry)
             

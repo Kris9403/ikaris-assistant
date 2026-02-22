@@ -1,10 +1,10 @@
-# Ikaris Assistant 🦾 (v1.2.1)
+# Ikaris Assistant 🦾 (v1.2.2)
 
 A hyper-personalized local AI research assistant powered by **Hydra**, **LangGraph**, and **Sherpa-ONNX** — a full local multimodal research agent with hybrid RAG, comparative synthesis, and NPU-accelerated voice.
 
 > [!IMPORTANT]
-> **Release Version**: v1.2.1
-> This version introduces Audio v2: Silero VAD speech gating, live partial hypothesis display, STT confidence scoring, and automatic NPU→CPU fallback. Built on top of v1.2.0's Hydra configuration, hybrid RAG, and Sherpa-ONNX audio stack.
+> **Release Version**: v1.2.2
+> This patch hardens the Ikaris behavioral engine against system telemetry hallucinations, fixes a VAD pipeline crash on extended NPU usage, and fixes the capability router to dispatch general biomedical search queries correctly to the hybrid RAG pipeline.
 
 ## 🚀 Key Features
 
@@ -267,6 +267,11 @@ The confidence is stored in `IkarisState.stt_confidence` so downstream nodes can
 
 ### 4. Auto-Switch STT
 If the primary STT engine (NPU/CUDA) fails to load, the system automatically falls back to CPU Whisper INT8. No config change needed — the CPU models are already downloaded. The UI shows an ⚡ indicator when auto-switch occurs.
+
+### v1.2.2
+- **Anti-Hallucination Prompts**: Enforced strict rules across LLM and GUI streams preventing fabricated system/hardware stats on ambiguous inputs.
+- **VAD Pipeline Reliability**: Switched to `reset()` vs `clear()` within Sherpa-ONNX's Voice Activity Detection to prevent native bindings crashes.
+- **Upgraded Hybrid RAG Router**: Phrases like "search pubmed for X" now correctly engage the full RAG pipeline instead of defaulting to the conversational LLM.
 
 ### v1.2.1 (Audio v2)
 - **Silero VAD**: Voice Activity Detection gates microphone — no wasted compute on silence.
