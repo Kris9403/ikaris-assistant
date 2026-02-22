@@ -78,26 +78,57 @@ def summarize_node(state: IkarisState, llm):
 
 def router_logic(state: IkarisState) -> Literal["hardware_node", "agent_planning_node", "logseq_node", "research_node", "llm_node"]:
     """Decides where to send the user's request with improved intelligence."""
-    user_msg = state["messages"][-1].content.lower()
+    from langchain_core.messages import HumanMessage
+    import logging
+    log = logging.getLogger(__name__)
+    
+    # Find the LAST HumanMessage (not just messages[-1], which may be
+    # an AI response after checkpoint merge / summarization)
+    user_msg = ""
+    for msg in reversed(state["messages"]):
+        if isinstance(msg, HumanMessage):
+            user_msg = msg.content.lower()
+            break
+    
+    if not user_msg:
+        log.warning(f"[Router] No HumanMessage found! messages[-1] = {state['messages'][-1].content[:80]}")
+        return "llm_node"
+    
+    log.info(f"[Router] Routing: '{user_msg[:80]}'")
     
     # 1. Hardware stats take priority
     if any(word in user_msg for word in ["battery", "cpu", "stats", "hardware"]):
+        log.info("[Router] → hardware_node")
         return "hardware_node"
     
-    # 2. DOWNLOADER logic - link, "download" command, or multiple ArXiv IDs
+    # 2. DOWNLOADER logic - ArXiv IDs, PubMed PMIDs, or explicit download commands
     arxiv_ids = re.findall(r'\d{4}\.\d{4,5}', user_msg)
-    if any(word in user_msg for word in ["arxiv.org", "download", "fetch"]) or len(arxiv_ids) > 0:
+    pmids = re.findall(r'\b\d{6,10}\b', user_msg)  # PMIDs are 6-10 digits
+    is_pubmed = any(w in user_msg for w in ["pubmed", "pmid"])
+    is_download = any(w in user_msg for w in ["arxiv.org", "download", "fetch"])
+    
+    # PubMed explicit request (keyword + PMID)
+    if is_pubmed and pmids:
+        log.info(f"[Router] → research_node (PubMed PMIDs: {pmids})")
+        return "research_node"
+    
+    # ArXiv download
+    if is_download or len(arxiv_ids) > 0:
         if len(arxiv_ids) > 1 or not any(word in user_msg for word in ["what", "how", "why", "explain"]):
+            log.info(f"[Router] → research_node (ArXiv: {arxiv_ids})")
             return "research_node"
     
     # 3. AGENTIC RESEARCH logic - for questions about existing papers
     if any(word in user_msg for word in ["paper", "research", "study", "according to"]):
+        log.info("[Router] → agent_planning_node")
         return "agent_planning_node"
     
     # 4. Personal Logseq notes
     if any(word in user_msg for word in ["note", "notes", "logseq", "journal", "diary"]):
+        log.info("[Router] → logseq_node")
         return "logseq_node"
-        
+    
+    log.info("[Router] → llm_node (default)")
     return "llm_node"
 
 def reasoning_router(state: IkarisState) -> Literal["retrieval_node", "generate_answer_node"]:

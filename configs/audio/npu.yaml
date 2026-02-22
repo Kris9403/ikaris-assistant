@@ -1,5 +1,5 @@
 # configs/audio/npu.yaml
-# Intel Core Ultra NPU profile — Sherpa-ONNX + OpenVINO
+# Intel Core Ultra NPU profile — Sherpa-ONNX + OpenVINO + Silero VAD
 _target_: src.utils.audio.SherpaAudioStack
 
 provider: openvino

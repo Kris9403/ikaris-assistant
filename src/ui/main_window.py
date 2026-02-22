@@ -11,9 +11,8 @@ from PyQt5.QtCore import Qt
 from src.ui.chat_widget import ChatWidget
 from src.ui.sidebar_widget import SidebarWidget
 from src.ui.status_bar import StatusBarWidget
-from src.ui.workers import GraphWorker, LLMWorker, IndexWorker
+from src.ui.workers import GraphWorker, LLMWorker, IndexWorker, VoiceWorker
 from src.main import router_logic
-from src.utils.llm_client import stream_lm_studio
 
 
 class IkarisMainWindow(QMainWindow):
@@ -34,6 +33,7 @@ class IkarisMainWindow(QMainWindow):
         # Keep explicit references to workers to prevent "QThread destroyed" crashes
         self._current_worker = None
         self._index_worker = None 
+        self._voice_worker = None
 
         self.ikaris_app = agent.app if agent else None
         self._setup_ui()
@@ -84,10 +84,11 @@ class IkarisMainWindow(QMainWindow):
         # Check which route the message would take
         msg_lower = text.lower()
         
-        # Hardware, research, paper, logseq → use full graph (non-streaming)
+        # Hardware, research, paper, logseq, pubmed → use full graph (non-streaming)
         needs_graph = (
             any(w in msg_lower for w in ["battery", "cpu", "stats", "hardware"]) or
             any(w in msg_lower for w in ["arxiv.org", "download", "fetch"]) or
+            any(w in msg_lower for w in ["pubmed", "pmid"]) or
             bool(re.findall(r'\d{4}\.\d{4,5}', msg_lower)) or
             any(w in msg_lower for w in ["paper", "research", "study", "according to"]) or
             any(w in msg_lower for w in ["note", "notes", "logseq", "journal", "diary"])
@@ -116,7 +117,7 @@ class IkarisMainWindow(QMainWindow):
         from langchain_core.messages import HumanMessage
         messages = [HumanMessage(content=text)]
 
-        self._current_worker = LLMWorker(messages, system_prompt)
+        self._current_worker = LLMWorker(self.agent.llm, messages, system_prompt)
         self._current_worker.token_received.connect(self.chat.append_token)
         self._current_worker.finished_signal.connect(self._on_stream_done)
         self._current_worker.error_signal.connect(self._on_error)
@@ -151,6 +152,9 @@ class IkarisMainWindow(QMainWindow):
         if self._current_worker and self._current_worker.isRunning():
             self.chat.add_system_message("⚠️ I'm busy thinking. Please wait.")
             return
+        if self._voice_worker and self._voice_worker.isRunning():
+            self.chat.add_system_message("⚠️ Already listening. Please wait.")
+            return
 
         # Check if audio stack supports speech input
         audio = self.agent.audio if self.agent else None
@@ -159,20 +163,41 @@ class IkarisMainWindow(QMainWindow):
             return
 
         self.chat.set_input_enabled(False)
-        self.chat.add_system_message("🎤 Listening...")
-        QApplication.processEvents()
+        vad_tag = ' (VAD-gated)' if getattr(audio, 'has_vad', False) else ''
+        self.chat.add_system_message(f"🎤 Listening{vad_tag}...")
 
-        try:
-            text = audio.listen()
-            if text and not text.startswith("Error"):
-                self.chat.add_system_message(f'Heard: "{text}"')
-                self._on_message(text)
-            else:
-                self.chat.add_system_message(f"⚠️ {text}")
-                self.chat.set_input_enabled(True)
-        except Exception as e:
-            self.chat.add_system_message(f"❌ Voice error: {str(e)}")
-            self.chat.set_input_enabled(True)
+        self._voice_worker = VoiceWorker(audio)
+        self._voice_worker.partial_text.connect(self._on_voice_partial)
+        self._voice_worker.finished_signal.connect(self._on_voice_done)
+        self._voice_worker.error_signal.connect(self._on_voice_error)
+        self._voice_worker.start()
+
+    def _on_voice_partial(self, partial_text):
+        """Update the chat with live partial transcription (feels magical)."""
+        self.chat.add_system_message(f'🎤 ... {partial_text}')
+
+    def _on_voice_done(self, text, confidence, provider):
+        """Handle completed voice transcription with confidence scoring."""
+        # Confidence badge
+        if confidence >= 0.7:
+            badge = f'🟢 {confidence:.0%}'
+        elif confidence >= 0.4:
+            badge = f'🟡 {confidence:.0%}'
+        else:
+            badge = f'🔴 {confidence:.0%}'
+
+        # Provider indicator (shows auto-switch if fallback was used)
+        provider_tag = f' [{provider}]' if provider != self.agent.audio.provider else ''
+        if provider_tag:
+            provider_tag = f' ⚡ [auto-switched → {provider}]'
+
+        self.chat.add_system_message(f'Heard ({badge}{provider_tag}): "{text}"')
+        self._on_message(text)
+
+    def _on_voice_error(self, error_msg):
+        """Handle voice input errors."""
+        self.chat.add_system_message(f'⚠️ {error_msg}')
+        self.chat.set_input_enabled(True)
 
     # ── PDF Indexing ──
 

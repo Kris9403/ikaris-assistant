@@ -1,10 +1,10 @@
-# Ikaris Assistant 🦾 (v1.2.0)
+# Ikaris Assistant 🦾 (v1.2.1)
 
 A hyper-personalized local AI research assistant powered by **Hydra**, **LangGraph**, and **Sherpa-ONNX** — a full local multimodal research agent with hybrid RAG, comparative synthesis, and NPU-accelerated voice.
 
 > [!IMPORTANT]
-> **Release Version**: v1.2.0
-> This version introduces Hydra configuration management, dependency-injected Agent architecture, hybrid RAG (FAISS + PubMed), comparative synthesis engine, and Sherpa-ONNX audio with NPU/CUDA/CPU profiles.
+> **Release Version**: v1.2.1
+> This version introduces Audio v2: Silero VAD speech gating, live partial hypothesis display, STT confidence scoring, and automatic NPU→CPU fallback. Built on top of v1.2.0's Hydra configuration, hybrid RAG, and Sherpa-ONNX audio stack.
 
 ## 🚀 Key Features
 
@@ -89,10 +89,13 @@ ikaris_assistant/
 ├── models/                     # ONNX model weights (gitignored)
 │   ├── stt/                    # Speech-to-Text models
 │   │   └── README.md           # Download instructions
-│   └── tts/                    # Text-to-Speech models
+│   ├── tts/                    # Text-to-Speech models
+│   │   └── README.md           # Download instructions
+│   └── vad/                    # Voice Activity Detection
 │       └── README.md           # Download instructions
 │
-├── run.py                      # Hydra-powered entry point
+├── run.py                      # Hydra-powered entry point (GUI + CLI)
+├── run_cli.py                  # DEPRECATED — use `python run.py mode=cli`
 ├── papers/                     # Drop your research PDFs here
 │
 └── src/
@@ -174,9 +177,22 @@ sherpa-onnx-offline-asr \
 
 ## 🎤 Usage
 
-### Run the GUI
+### Run the GUI (default)
 ```bash
 python run.py
+```
+
+### Run in CLI mode (no GUI, terminal REPL)
+```bash
+python run.py mode=cli
+```
+Inside the CLI you can type messages directly, press `v` + Enter for voice input, or `exit` to quit.
+
+### Combine CLI with other overrides
+```bash
+python run.py mode=cli audio=none          # text-only terminal
+python run.py mode=cli model=ollama        # use Ollama backend
+python run.py mode=cli audio=cuda paths=linux
 ```
 
 ### Override configs via CLI (Hydra)
@@ -230,7 +246,35 @@ python run.py --cfg job
 - **Piper** is rock-solid fallback when Kokoro glitches.
 - **Sherpa-ONNX + OpenVINO** is currently the best local stack for Intel NPU + privacy + latency.
 
-## 📋 Changelog
+## 🧠 Audio v2 Features
+
+### 1. Voice Activity Detection (Silero VAD)
+Silero VAD gates the microphone so STT only processes actual speech. This saves power, improves accuracy, and makes the UX snappier. Download the model:
+```bash
+bash scripts/pull_models.sh vad
+```
+
+### 2. Partial Hypothesis Display
+Zipformer streaming STT emits partial tokens as you speak. The UI shows live transcription (`🎤 ... hello how are`) that updates in real-time. Feels magical.
+
+### 3. Confidence Scoring
+Every transcription returns a confidence score (0.0–1.0) extracted from token probabilities:
+- 🟢 ≥70% — high confidence
+- 🟡 ≥40% — medium confidence
+- 🔴 <40% — low confidence (consider asking user to repeat)
+
+The confidence is stored in `IkarisState.stt_confidence` so downstream nodes can factor it in.
+
+### 4. Auto-Switch STT
+If the primary STT engine (NPU/CUDA) fails to load, the system automatically falls back to CPU Whisper INT8. No config change needed — the CPU models are already downloaded. The UI shows an ⚡ indicator when auto-switch occurs.
+
+### v1.2.1 (Audio v2)
+- **Silero VAD**: Voice Activity Detection gates microphone — no wasted compute on silence.
+- **Partial Hypothesis**: Zipformer streaming emits live tokens to UI for real-time transcription display.
+- **Confidence Scoring**: STT confidence (0.0–1.0) exposed to `IkarisState.stt_confidence` with 🟢/🟡/🔴 badges.
+- **Auto-Switch STT**: If primary provider (NPU/CUDA) fails, automatic fallback to CPU Whisper INT8.
+- **VoiceWorker QThread**: Voice input runs in background thread — UI never freezes during recording.
+- **STTResult dataclass**: Rich return type with text, confidence, duration, provider, and fallback status.
 
 ### v1.2.0
 - **Hydra Integration**: Full declarative config system (`configs/` hierarchy).

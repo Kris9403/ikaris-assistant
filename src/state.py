@@ -7,7 +7,6 @@ class IkarisState(TypedDict):
     # Hardware info from system stats
     hardware_info: str
     # Rolling conversation summary (for SQLite bloat prevention)
-    # Rolling conversation summary (for SQLite bloat prevention)
     summary: str
     
     # --- Agentic Control Fields ---
@@ -16,3 +15,6 @@ class IkarisState(TypedDict):
     evidence: list[dict]     # Accumulated structured evidence packets
     confidence: float        # 0.0 to 1.0 score of answer readiness
     loop_count: int          # Safety Guard
+    
+    # --- Audio v2 Fields ---
+    stt_confidence: float    # 0.0 to 1.0 — STT transcription confidence

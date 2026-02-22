@@ -1,5 +1,5 @@
 # configs/audio/cpu.yaml
-# CPU fallback — Whisper INT8 + Piper TTS
+# CPU fallback — Whisper INT8 + Piper TTS + Silero VAD
 _target_: src.utils.audio.SherpaAudioStack
 
 provider: cpu

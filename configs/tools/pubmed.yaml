@@ -1,4 +1,4 @@
 # configs/tools/pubmed.yaml
 _target_: src.tools.pubmed_tool.PubMedTool
-api_key: ${oc.env:NCBI_API_KEY}
+api_key: ${oc.env:NCBI_API_KEY,""}
 enabled: true

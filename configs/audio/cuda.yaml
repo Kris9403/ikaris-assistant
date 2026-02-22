@@ -1,5 +1,5 @@
 # configs/audio/cuda.yaml
-# CUDA GPU profile — Whisper float16 + Kokoro TTS
+# CUDA GPU profile — Whisper float16 + Kokoro TTS + Silero VAD
 _target_: src.utils.audio.SherpaAudioStack
 
 provider: cuda

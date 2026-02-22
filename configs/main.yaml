@@ -8,6 +8,10 @@ defaults:
   - tools/paper@tools.paper
   - tools/research@tools.research
   - tools/logseq@tools.logseq
+  - tools/pubmed@tools.pubmed
+
+# Runtime mode: "gui" (default) or "cli" (terminal REPL)
+mode: "gui"
 
 # Hardware optimization flags
 device: "cuda" # Switch to "cpu" if GPU is busy

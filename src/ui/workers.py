@@ -1,6 +1,6 @@
 import os
 from PyQt5.QtCore import QThread, pyqtSignal
-from src.utils.llm_client import llm_instance, stream_lm_studio
+from src.utils.llm_client import stream_lm_studio
 from src.tools.paper_tool import ingest_papers
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -14,14 +14,15 @@ class LLMWorker(QThread):
     finished_signal = pyqtSignal()
     error_signal = pyqtSignal(str)
 
-    def __init__(self, messages, system_prompt, parent=None):
+    def __init__(self, llm, messages, system_prompt, parent=None):
         super().__init__(parent)
+        self.llm = llm
         self.messages = messages
         self.system_prompt = system_prompt
 
     def run(self):
         try:
-            for token in stream_lm_studio(self.messages, self.system_prompt):
+            for token in stream_lm_studio(self.llm, self.messages, self.system_prompt):
                 self.token_received.emit(token)
             self.finished_signal.emit()
         except Exception as e:
@@ -94,3 +95,42 @@ class IndexWorker(QThread):
             self.finished_signal.emit(result)
         except Exception as e:
             self.error_signal.emit(f"Indexing error: {str(e)}")
+
+
+class VoiceWorker(QThread):
+    """
+    Runs STT listening in a background thread.
+    Supports partial hypothesis display via partial_text signal.
+    Emits the final transcription with confidence scoring.
+    """
+    partial_text = pyqtSignal(str)      # live partial hypothesis
+    finished_signal = pyqtSignal(str, float, str)  # text, confidence, provider
+    error_signal = pyqtSignal(str)
+
+    def __init__(self, audio_stack, parent=None):
+        super().__init__(parent)
+        self.audio_stack = audio_stack
+
+    def run(self):
+        try:
+            # Wire partial callback to emit Qt signal
+            self.audio_stack.set_partial_callback(
+                lambda text: self.partial_text.emit(text)
+            )
+
+            result = self.audio_stack.listen()
+
+            # Clear callback after recording
+            self.audio_stack.set_partial_callback(None)
+
+            if result.text and not result.text.startswith("Error"):
+                self.finished_signal.emit(
+                    result.text,
+                    result.confidence,
+                    result.provider,
+                )
+            else:
+                self.error_signal.emit(result.text)
+
+        except Exception as e:
+            self.error_signal.emit(f"Voice error: {str(e)}")
