@@ -2,17 +2,17 @@ import datetime
 import os
 from typing import List
 
-LOGSEQ_GRAPH_PATH = "/home/krishna/Desktop/LogSeq/Ikaris_Graph/journals"
-LOGSEQ_PAGES_PATH = "/home/krishna/Desktop/LogSeq/Ikaris_Graph/pages"
+from src.workspaces.workspace_manager import WorkspaceManager
 
 def add_logseq_note(content: str, tags: str = ""):
-    """Appends a note as a new block in today's Logseq journal."""
-    # Logseq journal files are usually YYYY_MM_DD.md
-    today = datetime.datetime.now().strftime("%Y_%m_%d")
-    file_path = os.path.join(LOGSEQ_GRAPH_PATH, f"{today}.md")
+    """Appends a note as a new block in today's workspace journal."""
+    wm = WorkspaceManager()
+    notes_dir = wm.get_logseq_dir()
     
-    # Ensure the directory exists
-    os.makedirs(LOGSEQ_GRAPH_PATH, exist_ok=True)
+    today = datetime.datetime.now().strftime("%Y_%m_%d")
+    file_path = os.path.join(notes_dir, f"{today}.md")
+    
+    os.makedirs(notes_dir, exist_ok=True)
     
     # Logseq blocks start with a dash '-'
     tag_str = f" {tags}" if tags else ""
@@ -21,20 +21,23 @@ def add_logseq_note(content: str, tags: str = ""):
     with open(file_path, "a") as f:
         f.write(formatted_note)
         
-    return f"Note added to Logseq journal for {today}."
+    return f"Note added to {wm.get_active_workspace()} workspace journal for {today}."
 
 def search_logseq_notes(query: str) -> str:
-    """Searches the Logseq 'pages' folder for specific keywords."""
-    if not os.path.exists(LOGSEQ_PAGES_PATH):
-        return f"Error: Logseq pages directory not found at {LOGSEQ_PAGES_PATH}"
+    """Searches the active workspace notes folder for specific keywords."""
+    wm = WorkspaceManager()
+    notes_dir = wm.get_logseq_dir()
+    
+    if not os.path.exists(notes_dir):
+        return f"Error: Notes directory not found at {notes_dir}"
     
     query_terms = query.lower().split()
     results = []
     
-    # Iterate through all markdown files in the pages directory
-    for filename in os.listdir(LOGSEQ_PAGES_PATH):
+    # Iterate through all markdown files in the notes directory
+    for filename in os.listdir(notes_dir):
         if filename.endswith(".md"):
-            file_path = os.path.join(LOGSEQ_PAGES_PATH, filename)
+            file_path = os.path.join(notes_dir, filename)
             try:
                 with open(file_path, "r", encoding="utf-8") as f:
                     content = f.read()

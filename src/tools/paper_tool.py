@@ -21,7 +21,7 @@ def get_embeddings():
         )
     return _embeddings_instance
 
-VECTOR_DB_PATH = "faiss_ikaris_index"
+from src.workspaces.workspace_manager import WorkspaceManager
 
 def extract_metadata_anchors(text: str) -> dict:
     """Extracts immutable anchors and infers hierarchy for Layer 3 (Graph)."""
@@ -46,17 +46,20 @@ def extract_metadata_anchors(text: str) -> dict:
     return result
 
 def ingest_papers():
-    """Chunks PDFs and creates a local vector store."""
-    papers_path = "./papers"
+    """Chunks PDFs and creates a local vector store inside the active workspace."""
+    wm = WorkspaceManager()
+    papers_path = wm.get_papers_dir()
+    db_path = wm.get_faiss_index_dir()
+    
     if not os.path.exists(papers_path):
         os.makedirs(papers_path)
-        return "Created 'papers' folder. Please add PDFs and try again."
+        return f"Created '{papers_path}' folder. Please add PDFs and try again."
 
     loader = DirectoryLoader(papers_path, glob="./*.pdf", loader_cls=PyPDFLoader)
     documents = loader.load()
     
     if not documents:
-        return "No PDFs found in the 'papers' folder."
+        return f"No PDFs found in the '{papers_path}' folder."
         
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     texts = text_splitter.split_documents(documents)
@@ -66,17 +69,20 @@ def ingest_papers():
         doc.metadata.update(anchors)
     
     vectorstore = FAISS.from_documents(texts, get_embeddings())
-    vectorstore.save_local(VECTOR_DB_PATH)
-    return f"Successfully indexed {len(texts)} chunks with Layer 3 metadata anchors."
+    vectorstore.save_local(db_path)
+    return f"Successfully indexed {len(texts)} chunks with Layer 3 metadata anchors in workspace '{wm.get_active_workspace()}'."
 
 def query_papers(question: str) -> list:
     """Retrieves relevant text as Evidence objects (Layer 3.5)."""
-    if not os.path.exists(VECTOR_DB_PATH):
+    wm = WorkspaceManager()
+    db_path = wm.get_faiss_index_dir()
+    
+    if not os.path.exists(db_path):
         ingest_result = ingest_papers()
         if "Successfully indexed" not in ingest_result:
             return [Evidence(source="faiss", id="error", title="Ingest Error", text=ingest_result)]
         
-    db = FAISS.load_local(VECTOR_DB_PATH, get_embeddings(), allow_dangerous_deserialization=True)
+    db = FAISS.load_local(db_path, get_embeddings(), allow_dangerous_deserialization=True)
     docs_and_scores = db.similarity_search_with_score(question, k=5)
     
     evidence = []

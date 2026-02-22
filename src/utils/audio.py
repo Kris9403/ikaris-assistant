@@ -89,7 +89,7 @@ class SherpaAudioStack:
 
         # Lazy-loaded engines
         self._recognizer = None
-        self._tts_engine = None
+        self._tts_engine = None # Original: self._tts_engine = None
         self._vad = None
         self._sherpa = None
 
@@ -99,12 +99,17 @@ class SherpaAudioStack:
 
         # Partial hypothesis callback: fn(partial_text: str)
         self._partial_callback: Optional[Callable[[str], None]] = None
+        self._is_listening = False # Added
 
         # Thread safety for VAD state
         self._lock = threading.Lock()
 
         log.info(f"[Audio] SherpaAudioStack v2 initialized | provider={provider} device={device}")
         log.info(f"[Audio] STT: {self.stt_cfg.get('type', 'none')} | TTS: {self.tts_cfg.get('type', 'none')}")
+
+    def stop_listening(self):
+        """Immediately interrupt any active listen loop (e.g., Push-to-Talk release)."""
+        self._is_listening = False
 
     # ------------------------------------------------------------------
     # Public: set partial hypothesis callback
@@ -363,9 +368,10 @@ class SherpaAudioStack:
                         pass  # Don't crash on callback errors
 
         log.info("[Audio] 🎤 Streaming STT (VAD-gated) — Listening...")
+        self._is_listening = True
         with sd.InputStream(samplerate=fs, channels=1, callback=callback,
                             blocksize=chunk_size):
-            while True:
+            while self._is_listening: # Changed from while True:
                 time.sleep(0.1)
 
                 # Process any remaining frames
@@ -456,9 +462,10 @@ class SherpaAudioStack:
                     silent_chunks += 1
 
         log.info("[Audio] 🎤 Offline STT (VAD-gated) — Recording...")
+        self._is_listening = True
         with sd.InputStream(samplerate=fs, channels=1, callback=callback,
                             blocksize=chunk_size):
-            while True:
+            while self._is_listening: # Changed from while True:
                 time.sleep(0.1)
                 elapsed = time.time() - recording_start
 

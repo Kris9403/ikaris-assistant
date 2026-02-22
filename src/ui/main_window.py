@@ -12,6 +12,7 @@ from src.ui.chat_widget import ChatWidget
 from src.ui.sidebar_widget import SidebarWidget
 from src.ui.status_bar import StatusBarWidget
 from src.ui.workers import GraphWorker, LLMWorker, IndexWorker, VoiceWorker
+from src.ui.evidence_viewer import EvidenceViewer
 from src.main import router_logic
 
 
@@ -34,10 +35,16 @@ class IkarisMainWindow(QMainWindow):
         self._current_worker = None
         self._index_worker = None 
         self._voice_worker = None
+        self._last_evidence = []
 
         self.ikaris_app = agent.app if agent else None
         self._setup_ui()
         self._connect_signals()
+        
+        # Phase 1 UX: Hide mic if audio is not capable of STT
+        audio = self.agent.audio if self.agent else None
+        if audio is None or not getattr(audio, 'has_stt', False):
+            self.chat.voice_btn.hide()
 
     def _setup_ui(self):
         central = QWidget()
@@ -67,6 +74,8 @@ class IkarisMainWindow(QMainWindow):
     def _connect_signals(self):
         self.chat.message_sent.connect(self._on_message)
         self.chat.voice_requested.connect(self._on_voice)
+        self.chat.voice_stopped.connect(self._on_voice_stop)
+        self.chat.citation_clicked.connect(self._on_citation_clicked)
         self.sidebar.index_btn.clicked.connect(self._on_index)
 
     # ── Message Handling ──
@@ -135,6 +144,7 @@ class IkarisMainWindow(QMainWindow):
 
         self._current_worker = GraphWorker(self.ikaris_app, text, self.config)
         self._current_worker.result_ready.connect(self._on_graph_result)
+        self._current_worker.evidence_ready.connect(self._on_evidence_ready)
         self._current_worker.error_signal.connect(self._on_error)
         self._current_worker.start()
 
@@ -145,12 +155,25 @@ class IkarisMainWindow(QMainWindow):
         # but relying on isRunning() check is safer.
 
     def _on_graph_result(self, content):
+        self.chat.remove_message("⚡ Processing...")
         self.chat.add_ai_message(content)
         self.chat.set_input_enabled(True)
 
     def _on_error(self, error_msg):
+        self.chat.remove_message("⚡ Processing...")
         self.chat.add_system_message(f"❌ Error: {error_msg}")
         self.chat.set_input_enabled(True)
+
+    def _on_evidence_ready(self, evidence_list):
+        self._last_evidence = evidence_list
+
+    def _on_citation_clicked(self, idx):
+        if not self._last_evidence: return
+        # Citations are 1-based (e.g. [1])
+        if 1 <= idx <= len(self._last_evidence):
+            ev = self._last_evidence[idx - 1]
+            viewer = EvidenceViewer(ev, self)
+            viewer.exec_()
 
     # ── Voice Input ──
 
@@ -177,6 +200,12 @@ class IkarisMainWindow(QMainWindow):
         self._voice_worker.finished_signal.connect(self._on_voice_done)
         self._voice_worker.error_signal.connect(self._on_voice_error)
         self._voice_worker.start()
+
+    def _on_voice_stop(self):
+        """Triggered when the user releases the Hold to Talk button."""
+        if self._voice_worker and self._voice_worker.isRunning():
+            if self.agent and self.agent.audio:
+                self.agent.audio.stop_listening()
 
     def _on_voice_partial(self, partial_text):
         """Update the chat with live partial transcription (feels magical)."""

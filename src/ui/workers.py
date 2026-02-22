@@ -35,6 +35,7 @@ class GraphWorker(QThread):
     Used for non-streaming nodes (hardware, research, paper, logseq).
     """
     result_ready = pyqtSignal(str)
+    evidence_ready = pyqtSignal(list)
     error_signal = pyqtSignal(str)
 
     def __init__(self, ikaris_app, user_msg, config, parent=None):
@@ -52,6 +53,10 @@ class GraphWorker(QThread):
             
             for event in self.ikaris_app.stream(inputs, config=self.config):
                 for node_name, value in event.items():
+                    # Extract active evidence payload for UI Citation Panel
+                    if isinstance(value, dict) and "evidence" in value:
+                        self.evidence_ready.emit(value["evidence"])
+                
                     # FILTER: Only show output from the final answer node 
                     # OR specific tool nodes (like hardware/research)
                     if node_name in ["generate_answer_node", "hardware_node", "research_node", "logseq_node"]:
